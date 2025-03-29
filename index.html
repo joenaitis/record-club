@@ -35,7 +35,7 @@
     </div>
 
     <div id="featured-album" class="mt-6 bg-purple-700 bg-opacity-40 p-4 rounded-lg hidden">
-        <h2 class="text-2xl font-bold mb-2">🎉 Album of the Month</h2>
+        <h2 class="text-2xl font-bold mb-2">Latest Pick</h2>
         <div id="featured-content" class="flex items-center space-x-4"></div>
     </div>
 
@@ -155,11 +155,7 @@ async function displayAlbums(filteredAlbums = albums) {
     const featuredContent = document.getElementById("featured-content");
     albumContainer.innerHTML = "";
 
-    const now = new Date();
-    const thisMonth = now.toLocaleString('default', { month: 'long' });
-    const thisYear = now.getFullYear().toString();
-    const currentPick = filteredAlbums.find(a => a.month === thisMonth && a.year === thisYear);
-    const latest = currentPick || filteredAlbums[0];
+    const latest = filteredAlbums[0];
 
     if (latest) {
         const { image } = await fetchAlbumDetails(latest.title, latest.artist);
@@ -179,7 +175,7 @@ async function displayAlbums(filteredAlbums = albums) {
     for (const album of filteredAlbums) {
         const { image } = await fetchAlbumDetails(album.title, album.artist);
         const div = document.createElement("div");
-        div.className = "bg-gray-800 p-3 rounded-lg flex items-center space-x-4 cursor-pointer fade-in album-card";
+        div.className = `bg-gray-800 p-3 rounded-lg flex items-center space-x-4 cursor-pointer fade-in album-card`;
         div.onclick = () => showAlbumDetails(album);
 
         div.innerHTML = `
@@ -217,7 +213,7 @@ async function showAlbumDetails(album) {
     document.getElementById("album-cover").src = image;
     document.getElementById("album-details-content").innerHTML = `
         <h2 class="text-2xl font-bold">${album.title} - ${album.artist}</h2>
-        <p><strong>Release Date:</strong> ${album.releaseDate}</p>
+        <p><strong>Release Year:</strong> ${album.releaseDate}</p>
         <p><strong>Genre:</strong> ${album.genre}</p>
         <p><strong>Hosted By:</strong> ${album.hostedBy}</p>
         <p><strong>Meeting Number:</strong> ${album.meetingNumber}</p>
