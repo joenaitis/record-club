@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Record Club</title>
+    <title>Grand Rapids Record Club</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
 </head>
 <body class="bg-gray-900 text-white">
@@ -37,10 +37,35 @@
 const API_KEY = "33ba6c5c9f098d1131ad8cd253b17e26"; // Last.fm API key
 
 const albums = [
-    { month: "March", year: "2025", artist: "The Band", title: "The Band" },
-    { month: "February", year: "2025", artist: "Ween", title: "Quebec" },
-    { month: "January", year: "2025", artist: "Primus", title: "Sailing The Seas of Cheese" }
+    {
+        month: "March",
+        year: "2025",
+        artist: "The Band",
+        title: "The Band",
+        hostedBy: "Mike",
+        releaseDate: "1969-09-22",  // Actual release date
+        genre: "Rock"
+    },
+    {
+        month: "February",
+        year: "2025",
+        artist: "Ween",
+        title: "Quebec",
+        hostedBy: "Justin",
+        releaseDate: "2003-03-04",  // Actual release date
+        genre: "Alternative Rock"
+    },
+    {
+        month: "December",
+        year: "2024",
+        artist: "Primus",
+        title: "Sailing The Seas of Cheese",
+        hostedBy: "Scott",
+        releaseDate: "1991-05-24",  // Actual release date
+        genre: "Funk Metal"
+    }
 ];
+
 
 async function fetchAlbumCover(artist, album) {
     const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&format=json`;
@@ -109,7 +134,8 @@ function searchAlbums() {
         album.title.toLowerCase().includes(query) ||
         album.artist.toLowerCase().includes(query) ||
         album.month.toLowerCase().includes(query) ||
-        album.year.includes(query)
+        album.year.includes(query) ||
+        album.hostedBy.toLowerCase().includes(query)  // Added search for hostedBy
     );
     displayAlbums(filteredAlbums);
 }
@@ -121,15 +147,24 @@ async function showAlbumDetails(artist, album) {
     if (albumDetails) {
         const detailsContent = document.getElementById("album-details-content");
 
+        // Fetch additional info from albums array
+        const albumInfo = albums.find(a => a.artist === artist && a.title === album);
+
+        const releaseDate = albumInfo ? albumInfo.releaseDate : (albumDetails.release_date || "Unknown");
+        const genre = albumInfo ? albumInfo.genre : (albumDetails.toptags?.tag[0]?.name || "Unknown");
+        const hostedBy = albumInfo ? albumInfo.hostedBy : "Unknown";
+
         detailsContent.innerHTML = `
-            <img src="${albumDetails.image[3]["#text"]}" class="mt-4 w-48 h-48 rounded" alt="${albumDetails.name}">
             <h2 class="text-2xl font-bold">${albumDetails.name} - ${artist}</h2>
             <br>
-            <p><strong>Release Date:</strong> ${albumDetails.release_date || "Unknown"}</p>
+            <p><strong>Release Date:</strong> ${releaseDate}</p>
             <br>
-            <p><strong>Genre:</strong> ${albumDetails.toptags?.tag[0]?.name || "Unknown"}</p>
+            <p><strong>Genre:</strong> ${genre}</p>
+            <br>
+            <p><strong>Hosted By:</strong> ${hostedBy}</p>
             <br>
             <p><strong>Album Info:</strong> ${albumDetails.wiki?.summary || "No description available."}</p>
+            <img src="${albumDetails.image[3]["#text"]}" class="mt-4 w-48 h-48 rounded" alt="${albumDetails.name}">
         `;
 
         document.getElementById("album-details-modal").classList.remove("hidden");
