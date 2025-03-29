@@ -18,6 +18,11 @@
                 transform: translateY(0);
             }
         }
+
+        .album-card:hover {
+            background-color: #4b5563;
+            transition: background-color 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -35,7 +40,7 @@
     </div>
 
     <!-- Dropdowns for filtering -->
-    <div class="mt-6 flex space-x-4">
+    <div class="mt-6 flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
         <div class="flex flex-col">
             <label for="yearFilter">Year</label>
             <select id="yearFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
@@ -150,8 +155,13 @@ async function displayAlbums(filteredAlbums = albums) {
     const featuredContent = document.getElementById("featured-content");
     albumContainer.innerHTML = "";
 
-    if (filteredAlbums.length && filteredAlbums === albums) {
-        const latest = filteredAlbums[0];
+    const now = new Date();
+    const thisMonth = now.toLocaleString('default', { month: 'long' });
+    const thisYear = now.getFullYear().toString();
+    const currentPick = filteredAlbums.find(a => a.month === thisMonth && a.year === thisYear);
+    const latest = currentPick || filteredAlbums[0];
+
+    if (latest) {
         const { image } = await fetchAlbumDetails(latest.title, latest.artist);
         featuredContent.innerHTML = `
             <img src="${image}" class="w-20 h-20 rounded">
@@ -169,7 +179,7 @@ async function displayAlbums(filteredAlbums = albums) {
     for (const album of filteredAlbums) {
         const { image } = await fetchAlbumDetails(album.title, album.artist);
         const div = document.createElement("div");
-        div.className = "bg-gray-800 p-3 rounded-lg flex items-center space-x-4 cursor-pointer fade-in";
+        div.className = "bg-gray-800 p-3 rounded-lg flex items-center space-x-4 cursor-pointer fade-in album-card";
         div.onclick = () => showAlbumDetails(album);
 
         div.innerHTML = `
