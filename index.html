@@ -122,6 +122,7 @@ async function showAlbumDetails(artist, album) {
         const detailsContent = document.getElementById("album-details-content");
 
         detailsContent.innerHTML = `
+            <img src="${albumDetails.image[3]["#text"]}" class="mt-4 w-48 h-48 rounded" alt="${albumDetails.name}">
             <h2 class="text-2xl font-bold">${albumDetails.name} - ${artist}</h2>
             <br>
             <p><strong>Release Date:</strong> ${albumDetails.release_date || "Unknown"}</p>
@@ -129,7 +130,6 @@ async function showAlbumDetails(artist, album) {
             <p><strong>Genre:</strong> ${albumDetails.toptags?.tag[0]?.name || "Unknown"}</p>
             <br>
             <p><strong>Album Info:</strong> ${albumDetails.wiki?.summary || "No description available."}</p>
-            <img src="${albumDetails.image[3]["#text"]}" class="mt-4 w-48 h-48 rounded" alt="${albumDetails.name}">
         `;
 
         document.getElementById("album-details-modal").classList.remove("hidden");
