@@ -89,7 +89,7 @@ async function fetchAlbumsFromSheet() {
 
     if (!rows || rows.length <= 1) return;
 
-    albums = rows.slice(1).filter(row => row.length >= 7).map(row => ({
+    albums = rows.slice(1).filter(row => row.length >= 9).map(row => ({
         month: row[3],
         year: row[2],
         artist: row[5],
@@ -158,7 +158,7 @@ async function displayAlbums(filteredAlbums = albums) {
             <div>
                 <h3 class="text-xl">${latest.title} - ${latest.artist}</h3>
                 <p class="text-sm">${latest.month} ${latest.year} • Hosted by ${latest.hostedBy}</p>
-                <a href="${latest.spotifyURL}" target="_blank" class="text-blue-300 underline">Listen on Spotify</a>
+                <a href="${latest.spotifyURL || 'https://open.spotify.com/'}" target="_blank" class="text-blue-300 underline">Listen on Spotify</a>
             </div>
         `;
         featured.classList.remove("hidden");
@@ -211,7 +211,7 @@ async function showAlbumDetails(album) {
         <p><strong>Genre:</strong> ${album.genre}</p>
         <p><strong>Hosted By:</strong> ${album.hostedBy}</p>
         <p><strong>Meeting Number:</strong> ${album.meetingNumber}</p>
-        <a href="${album.spotifyURL}" target="_blank" class="text-blue-500">Listen on Spotify</a>
+        <a href="${album.spotifyURL || 'https://open.spotify.com/'}" target="_blank" class="text-blue-500">Listen on Spotify</a>
         <br>
         <p><strong>Album Info:</strong> ${summary}</p>
     `;
@@ -233,4 +233,3 @@ fetchAlbumsFromSheet();
 </script>
 </body>
 </html>
-
