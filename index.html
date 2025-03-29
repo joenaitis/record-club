@@ -24,14 +24,12 @@
             <label for="genreFilter">Genre</label>
             <select id="genreFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
                 <option value="">All Genres</option>
-                <!-- Genre options will be populated dynamically -->
             </select>
         </div>
         <div class="flex flex-col">
             <label for="hostFilter">Host</label>
             <select id="hostFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
                 <option value="">All Hosts</option>
-                <!-- Host options will be populated dynamically -->
             </select>
         </div>
     </div>
@@ -43,110 +41,66 @@
     <div id="album-container" class="mt-4"></div>
 
     <!-- Modal for displaying album details -->
-    <div id="album-details-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 hidden">
-        <div class="container mx-auto p-6 bg-gray-900 rounded-lg mt-20 max-w-3xl">
-            <div id="album-details-content" class="text-white">
-                <!-- Album details will be injected here -->
-            </div>
+    <div id="album-details-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 hidden flex justify-center items-center">
+        <div class="bg-gray-900 p-6 rounded-lg max-w-3xl text-center">
+            <img id="album-cover" class="w-48 h-48 mx-auto rounded mb-4" src="" alt="Album Cover">
+            <div id="album-details-content" class="text-white"></div>
             <button onclick="closeModal()" class="mt-4 bg-red-500 text-white px-4 py-2 rounded">Close</button>
         </div>
     </div>
 </div>
 
 <script>
-const API_KEY = "33ba6c5c9f098d1131ad8cd253b17e26"; // Last.fm API key
+const API_KEY_LASTFM = "33ba6c5c9f098d1131ad8cd253b17e26";
+const API_KEY_GOOGLE_SHEETS = "AIzaSyB3A46Jlef2icSX7TYbze7vXsDQNwjK5bU";
+const SPREADSHEET_ID = '158c3cfSIg4AX8qOARaSioQikc3CRX2psWyFRhHI9H3U';
+const RANGE = 'Sheet1!A1:G100';
 
-const albums = [
-    {
-        month: "March",
-        year: "2025",
-        artist: "The Band",
-        title: "The Band",
-        hostedBy: "Mike",
-        releaseDate: "1969-09-22",  // Actual release date
-        genre: "Rock"
-    },
-    {
-        month: "February",
-        year: "2025",
-        artist: "Ween",
-        title: "Quebec",
-        hostedBy: "Justin",
-        releaseDate: "2003-03-04",  // Actual release date
-        genre: "Alternative Rock"
-    },
-    {
-        month: "December",
-        year: "2024",
-        artist: "Primus",
-        title: "Sailing The Seas of Cheese",
-        hostedBy: "Scott",
-        releaseDate: "1991-05-24",  // Actual release date
-        genre: "Funk Metal"
-    }
-];
+let albums = [];
+
+async function fetchAlbumsFromSheet() {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${RANGE}?key=${API_KEY_GOOGLE_SHEETS}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const rows = data.values;
+
+    if (!rows || rows.length <= 1) return;
+
+    albums = rows.slice(1).filter(row => row.length >= 7).map(row => ({
+        month: row[2],
+        year: row[1],
+        artist: row[4],
+        title: row[3],
+        hostedBy: row[0],
+        releaseDate: row[6],
+        genre: row[5]
+    }));
+
+    populateDropdowns();
+    displayAlbums();
+}
 
 function populateDropdowns() {
-    const years = [...new Set(albums.map(album => album.year))].sort();
-    const genres = [...new Set(albums.map(album => album.genre))].sort();
-    const hosts = [...new Set(albums.map(album => album.hostedBy))].sort();
-
     const yearDropdown = document.getElementById("yearFilter");
     const genreDropdown = document.getElementById("genreFilter");
     const hostDropdown = document.getElementById("hostFilter");
 
-    years.forEach(year => {
-        const option = document.createElement("option");
-        option.value = year;
-        option.textContent = year;
-        yearDropdown.appendChild(option);
-    });
+    [yearDropdown, genreDropdown, hostDropdown].forEach(dropdown => dropdown.innerHTML = '<option value="">All</option>');
 
-    genres.forEach(genre => {
-        const option = document.createElement("option");
-        option.value = genre;
-        option.textContent = genre;
-        genreDropdown.appendChild(option);
-    });
+    const years = [...new Set(albums.map(album => album.year))].sort();
+    const genres = [...new Set(albums.map(album => album.genre))].sort();
+    const hosts = [...new Set(albums.map(album => album.hostedBy))].sort();
 
-    hosts.forEach(host => {
-        const option = document.createElement("option");
-        option.value = host;
-        option.textContent = host;
-        hostDropdown.appendChild(option);
-    });
+    years.forEach(year => yearDropdown.innerHTML += `<option value="${year}">${year}</option>`);
+    genres.forEach(genre => genreDropdown.innerHTML += `<option value="${genre}">${genre}</option>`);
+    hosts.forEach(host => hostDropdown.innerHTML += `<option value="${host}">${host}</option>`);
 }
 
-async function fetchAlbumCover(artist, album) {
-    const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&format=json`;
-
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.album && data.album.image) {
-            return data.album.image[3]["#text"]; // The largest available image
-        }
-    } catch (error) {
-        console.error("Error fetching album cover:", error);
-    }
-    return "default_album_cover.jpg"; // Fallback image if not found
-}
-
-async function fetchAlbumDetails(artist, album) {
-    const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&format=json`;
-
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.album) {
-            return data.album;
-        }
-    } catch (error) {
-        console.error("Error fetching album details:", error);
-    }
-    return null;
+async function fetchAlbumDetails(title, artist) {
+    const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY_LASTFM}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(title)}&format=json`;
+    const response = await fetch(url);
+    const data = await response.json();
+    return data.album ? { image: data.album.image[3]['#text'], summary: data.album.wiki?.summary || "No description available." } : { image: "default_album_cover.jpg", summary: "No description available." };
 }
 
 async function displayAlbums(filteredAlbums = albums) {
@@ -154,81 +108,37 @@ async function displayAlbums(filteredAlbums = albums) {
     albumContainer.innerHTML = "";
 
     for (const album of filteredAlbums) {
-        const coverUrl = await fetchAlbumCover(album.artist, album.title);
-
+        const { image } = await fetchAlbumDetails(album.title, album.artist);
         const div = document.createElement("div");
         div.className = "bg-gray-800 p-3 rounded-lg flex items-center space-x-4 cursor-pointer";
-        div.onclick = () => showAlbumDetails(album.artist, album.title); // Add click event to show details
+        div.onclick = () => showAlbumDetails(album);
 
-        const img = document.createElement("img");
-        img.src = coverUrl;
-        img.className = "w-16 h-16 rounded";
-
-        const text = document.createElement("p");
-        text.textContent = `${album.month} ${album.year}: ${album.title} - ${album.artist}`;
-
-        div.appendChild(img);
-        div.appendChild(text);
+        div.innerHTML = `
+            <img src="${image}" class="w-16 h-16 rounded">
+            <p>${album.month} ${album.year}: ${album.title} - ${album.artist}</p>
+        `;
         albumContainer.appendChild(div);
     }
 }
 
-function searchAlbums() {
-    const query = document.getElementById("searchBar").value.toLowerCase();
-    const yearQuery = document.getElementById("yearFilter").value;
-    const genreQuery = document.getElementById("genreFilter").value;
-    const hostQuery = document.getElementById("hostFilter").value;
-
-    const filteredAlbums = albums.filter(album =>
-        (album.title.toLowerCase().includes(query) ||
-        album.artist.toLowerCase().includes(query) ||
-        album.month.toLowerCase().includes(query) ||
-        album.year.includes(query)) &&
-        (yearQuery ? album.year === yearQuery : true) &&
-        (genreQuery ? album.genre === genreQuery : true) &&
-        (hostQuery ? album.hostedBy === hostQuery : true)
-    );
-    displayAlbums(filteredAlbums);
+async function showAlbumDetails(album) {
+    const { image, summary } = await fetchAlbumDetails(album.title, album.artist);
+    document.getElementById("album-cover").src = image;
+    document.getElementById("album-details-content").innerHTML = `
+        <h2 class="text-2xl font-bold">${album.title} - ${album.artist}</h2>
+        <p><strong>Release Date:</strong> ${album.releaseDate}</p>
+        <p><strong>Genre:</strong> ${album.genre}</p>
+        <p><strong>Hosted By:</strong> ${album.hostedBy}</p>
+        <p><strong>Album Info:</strong> ${summary}</p>
+    `;
+    document.getElementById("album-details-modal").classList.remove("hidden");
 }
 
-async function showAlbumDetails(artist, album) {
-    const albumDetails = await fetchAlbumDetails(artist, album);
-
-    if (albumDetails) {
-        const detailsContent = document.getElementById("album-details-content");
-
-        // Fetch additional info from albums array
-        const albumInfo = albums.find(a => a.artist === artist && a.title === album);
-
-        const releaseDate = albumInfo ? albumInfo.releaseDate : (albumDetails.release_date || "Unknown");
-        const genre = albumInfo ? albumInfo.genre : (albumDetails.toptags?.tag[0]?.name || "Unknown");
-        const hostedBy = albumInfo ? albumInfo.hostedBy : "Unknown";
-
-        detailsContent.innerHTML = `
-            <h2 class="text-2xl font-bold">${albumDetails.name} - ${artist}</h2>
-            <br>
-            <p><strong>Release Date:</strong> ${releaseDate}</p>
-            <br>
-            <p><strong>Genre:</strong> ${genre}</p>
-            <br>
-            <p><strong>Hosted By:</strong> ${hostedBy}</p>
-            <br>
-            <p><strong>Album Info:</strong> ${albumDetails.wiki?.summary || "No description available."}</p>
-            <img src="${albumDetails.image[3]["#text"]}" class="mt-4 w-48 h-48 rounded" alt="${albumDetails.name}">
-        `;
-
-        document.getElementById("album-details-modal").classList.remove("hidden");
-    }
-}
-
-// Function to close the modal
 function closeModal() {
     document.getElementById("album-details-modal").classList.add("hidden");
 }
 
-// Populate dropdowns when the page loads
-populateDropdowns();
-displayAlbums();
+fetchAlbumsFromSheet();
 </script>
 </body>
 </html>
