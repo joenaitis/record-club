@@ -5,11 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grand Rapids Record Club</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <style>
+        .fade-in {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-900 text-white">
 <div class="container mx-auto p-6">
     <h1 class="text-4xl font-bold text-center">Grand Rapids Record Club 🎵</h1>
     <p class="text-center mt-2">A group of friends exploring a new album each month.</p>
+
+    <div class="text-right mt-4">
+        <button id="toggleDark" class="bg-gray-700 px-4 py-2 rounded text-sm">Toggle Light/Dark</button>
+    </div>
+
+    <div id="featured-album" class="mt-6 bg-purple-700 bg-opacity-40 p-4 rounded-lg hidden">
+        <h2 class="text-2xl font-bold mb-2">🎉 Album of the Month</h2>
+        <div id="featured-content" class="flex items-center space-x-4"></div>
+    </div>
 
     <!-- Dropdowns for filtering -->
     <div class="mt-6 flex space-x-4">
@@ -56,6 +79,7 @@ const SPREADSHEET_ID = '158c3cfSIg4AX8qOARaSioQikc3CRX2psWyFRhHI9H3U';
 const RANGE = 'Sheet1!A1:G100';
 
 let albums = [];
+const albumImageCache = new Map();
 
 async function fetchAlbumsFromSheet() {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${RANGE}?key=${API_KEY_GOOGLE_SHEETS}`;
@@ -76,6 +100,8 @@ async function fetchAlbumsFromSheet() {
         meetingNumber: row[0],
         spotifyURL: row[8]
     }));
+
+    albums.sort((a, b) => new Date(`${b.month} 1, ${b.year}`) - new Date(`${a.month} 1, ${a.year}`));
 
     populateDropdowns();
     displayAlbums();
@@ -98,20 +124,52 @@ function populateDropdowns() {
 }
 
 async function fetchAlbumDetails(title, artist) {
-    const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY_LASTFM}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(title)}&format=json`;
-    const response = await fetch(url);
-    const data = await response.json();
-    return data.album ? { image: data.album.image[3]['#text'], summary: data.album.wiki?.summary || "No description available." } : { image: "default_album_cover.jpg", summary: "No description available." };
+    const key = `${artist} - ${title}`;
+    if (albumImageCache.has(key)) return albumImageCache.get(key);
+
+    try {
+        const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY_LASTFM}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(title)}&format=json`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        const image = data?.album?.image?.[3]?.['#text'] || "default_album_cover.jpg";
+        const summary = data?.album?.wiki?.summary || "No description available.";
+
+        const details = { image, summary };
+        albumImageCache.set(key, details);
+        return details;
+    } catch (e) {
+        console.error("Error fetching album details:", e);
+        return { image: "default_album_cover.jpg", summary: "No description available." };
+    }
 }
 
 async function displayAlbums(filteredAlbums = albums) {
     const albumContainer = document.getElementById("album-container");
+    const featured = document.getElementById("featured-album");
+    const featuredContent = document.getElementById("featured-content");
     albumContainer.innerHTML = "";
+
+    if (filteredAlbums.length && filteredAlbums === albums) {
+        const latest = filteredAlbums[0];
+        const { image } = await fetchAlbumDetails(latest.title, latest.artist);
+        featuredContent.innerHTML = `
+            <img src="${image}" class="w-20 h-20 rounded">
+            <div>
+                <h3 class="text-xl">${latest.title} - ${latest.artist}</h3>
+                <p class="text-sm">${latest.month} ${latest.year} • Hosted by ${latest.hostedBy}</p>
+                <a href="${latest.spotifyURL}" target="_blank" class="text-blue-300 underline">Listen on Spotify</a>
+            </div>
+        `;
+        featured.classList.remove("hidden");
+    } else {
+        featured.classList.add("hidden");
+    }
 
     for (const album of filteredAlbums) {
         const { image } = await fetchAlbumDetails(album.title, album.artist);
         const div = document.createElement("div");
-        div.className = "bg-gray-800 p-3 rounded-lg flex items-center space-x-4 cursor-pointer";
+        div.className = "bg-gray-800 p-3 rounded-lg flex items-center space-x-4 cursor-pointer fade-in";
         div.onclick = () => showAlbumDetails(album);
 
         div.innerHTML = `
@@ -120,6 +178,28 @@ async function displayAlbums(filteredAlbums = albums) {
         `;
         albumContainer.appendChild(div);
     }
+}
+
+function searchAlbums() {
+    const year = document.getElementById("yearFilter").value.toLowerCase();
+    const genre = document.getElementById("genreFilter").value.toLowerCase();
+    const host = document.getElementById("hostFilter").value.toLowerCase();
+    const searchText = document.getElementById("searchBar").value.toLowerCase();
+
+    const filtered = albums.filter(album => {
+        const matchesYear = !year || album.year.toLowerCase() === year;
+        const matchesGenre = !genre || album.genre.toLowerCase() === genre;
+        const matchesHost = !host || album.hostedBy.toLowerCase() === host;
+        const matchesSearch = !searchText ||
+            album.title.toLowerCase().includes(searchText) ||
+            album.artist.toLowerCase().includes(searchText) ||
+            album.genre.toLowerCase().includes(searchText) ||
+            album.hostedBy.toLowerCase().includes(searchText);
+
+        return matchesYear && matchesGenre && matchesHost && matchesSearch;
+    });
+
+    displayAlbums(filtered);
 }
 
 async function showAlbumDetails(album) {
@@ -142,7 +222,15 @@ function closeModal() {
     document.getElementById("album-details-modal").classList.add("hidden");
 }
 
+document.getElementById("toggleDark").addEventListener("click", () => {
+    document.body.classList.toggle("bg-gray-900");
+    document.body.classList.toggle("bg-white");
+    document.body.classList.toggle("text-white");
+    document.body.classList.toggle("text-black");
+});
+
 fetchAlbumsFromSheet();
 </script>
 </body>
 </html>
+
