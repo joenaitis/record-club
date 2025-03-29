@@ -17,7 +17,6 @@
             <label for="yearFilter">Year</label>
             <select id="yearFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
                 <option value="">All Years</option>
-                <!-- Year options will be populated dynamically -->
             </select>
         </div>
         <div class="flex flex-col">
@@ -67,13 +66,15 @@ async function fetchAlbumsFromSheet() {
     if (!rows || rows.length <= 1) return;
 
     albums = rows.slice(1).filter(row => row.length >= 7).map(row => ({
-        month: row[2],
-        year: row[1],
-        artist: row[4],
-        title: row[3],
-        hostedBy: row[0],
-        releaseDate: row[6],
-        genre: row[5]
+        month: row[3],
+        year: row[2],
+        artist: row[5],
+        title: row[4],
+        hostedBy: row[1],
+        releaseDate: row[7],
+        genre: row[6],
+        meetingNumber: row[0],
+        spotifyURL: row[8]
     }));
 
     populateDropdowns();
@@ -129,6 +130,9 @@ async function showAlbumDetails(album) {
         <p><strong>Release Date:</strong> ${album.releaseDate}</p>
         <p><strong>Genre:</strong> ${album.genre}</p>
         <p><strong>Hosted By:</strong> ${album.hostedBy}</p>
+        <p><strong>Meeting Number:</strong> ${album.meetingNumber}</p> <!-- Display meeting number -->
+        <a href="${album.spotifyURL}" target="_blank" class="text-blue-500">Listen on Spotify</a>
+        <br>
         <p><strong>Album Info:</strong> ${summary}</p>
     `;
     document.getElementById("album-details-modal").classList.remove("hidden");
