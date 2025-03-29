@@ -11,9 +11,29 @@
     <h1 class="text-4xl font-bold text-center">Record Club 🎵</h1>
     <p class="text-center mt-2">A group of friends exploring a new album each month.</p>
 
-    <div class="mt-6">
-        <button class="tab-btn bg-blue-500 px-4 py-2 rounded" onclick="showYear('2025')">2025</button>
-        <button class="tab-btn bg-blue-500 px-4 py-2 rounded" onclick="showYear('2024')">2024</button>
+    <!-- Dropdowns for filtering -->
+    <div class="mt-6 flex space-x-4">
+        <div class="flex flex-col">
+            <label for="yearFilter">Year</label>
+            <select id="yearFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
+                <option value="">All Years</option>
+                <!-- Year options will be populated dynamically -->
+            </select>
+        </div>
+        <div class="flex flex-col">
+            <label for="genreFilter">Genre</label>
+            <select id="genreFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
+                <option value="">All Genres</option>
+                <!-- Genre options will be populated dynamically -->
+            </select>
+        </div>
+        <div class="flex flex-col">
+            <label for="hostFilter">Host</label>
+            <select id="hostFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
+                <option value="">All Hosts</option>
+                <!-- Host options will be populated dynamically -->
+            </select>
+        </div>
     </div>
 
     <div class="mt-4">
@@ -66,6 +86,36 @@ const albums = [
     }
 ];
 
+function populateDropdowns() {
+    const years = [...new Set(albums.map(album => album.year))].sort();
+    const genres = [...new Set(albums.map(album => album.genre))].sort();
+    const hosts = [...new Set(albums.map(album => album.hostedBy))].sort();
+
+    const yearDropdown = document.getElementById("yearFilter");
+    const genreDropdown = document.getElementById("genreFilter");
+    const hostDropdown = document.getElementById("hostFilter");
+
+    years.forEach(year => {
+        const option = document.createElement("option");
+        option.value = year;
+        option.textContent = year;
+        yearDropdown.appendChild(option);
+    });
+
+    genres.forEach(genre => {
+        const option = document.createElement("option");
+        option.value = genre;
+        option.textContent = genre;
+        genreDropdown.appendChild(option);
+    });
+
+    hosts.forEach(host => {
+        const option = document.createElement("option");
+        option.value = host;
+        option.textContent = host;
+        hostDropdown.appendChild(option);
+    });
+}
 
 async function fetchAlbumCover(artist, album) {
     const url = `https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${API_KEY}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&format=json`;
@@ -123,24 +173,24 @@ async function displayAlbums(filteredAlbums = albums) {
     }
 }
 
-function showYear(year) {
-    const filteredAlbums = albums.filter(album => album.year === year);
-    displayAlbums(filteredAlbums);
-}
-
 function searchAlbums() {
     const query = document.getElementById("searchBar").value.toLowerCase();
+    const yearQuery = document.getElementById("yearFilter").value;
+    const genreQuery = document.getElementById("genreFilter").value;
+    const hostQuery = document.getElementById("hostFilter").value;
+
     const filteredAlbums = albums.filter(album =>
-        album.title.toLowerCase().includes(query) ||
+        (album.title.toLowerCase().includes(query) ||
         album.artist.toLowerCase().includes(query) ||
         album.month.toLowerCase().includes(query) ||
-        album.year.includes(query) ||
-        album.hostedBy.toLowerCase().includes(query)  // Added search for hostedBy
+        album.year.includes(query)) &&
+        (yearQuery ? album.year === yearQuery : true) &&
+        (genreQuery ? album.genre === genreQuery : true) &&
+        (hostQuery ? album.hostedBy === hostQuery : true)
     );
     displayAlbums(filteredAlbums);
 }
 
-// Function to show album details in a modal
 async function showAlbumDetails(artist, album) {
     const albumDetails = await fetchAlbumDetails(artist, album);
 
@@ -176,6 +226,8 @@ function closeModal() {
     document.getElementById("album-details-modal").classList.add("hidden");
 }
 
+// Populate dropdowns when the page loads
+populateDropdowns();
 displayAlbums();
 </script>
 </body>
