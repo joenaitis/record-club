@@ -120,7 +120,7 @@ function populateDropdowns() {
     [yearDropdown, genreDropdown, hostDropdown].forEach(dropdown => dropdown.innerHTML = '<option value="">All</option>');
 
     const years = [...new Set(albums.map(album => album.year))].sort();
-    const genres = [...new Set(albums.map(album => album.genre))].sort();
+    const genres = [...new Set(albums.flatMap(album => album.genre.split(',').map(g => g.trim())))].sort();
     const hosts = [...new Set(albums.map(album => album.hostedBy))].sort();
 
     years.forEach(year => yearDropdown.innerHTML += `<option value="${year}">${year}</option>`);
@@ -194,7 +194,7 @@ function searchAlbums() {
 
     const filtered = albums.filter(album => {
         const matchesYear = !year || album.year.toLowerCase() === year;
-        const matchesGenre = !genre || album.genre.toLowerCase() === genre;
+        const matchesGenre = !genre || album.genre.toLowerCase().split(',').map(g => g.trim()).includes(genre);
         const matchesHost = !host || album.hostedBy.toLowerCase() === host;
         const matchesSearch = !searchText ||
             album.title.toLowerCase().includes(searchText) ||
