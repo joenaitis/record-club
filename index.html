@@ -5,23 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grand Rapids Record Club</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-    <style>
-        .fade-in {
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeIn 0.5s ease-out forwards;
+    <style>$1
+
+        .album-card {
+            background-color: #1f2937; /* gray-800 */
         }
 
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        body.bg-white .album-card {
+            background-color: #f3f4f6; /* gray-100 */
+            color: #1f2937;
         }
 
-        .album-card:hover {
-            background-color: #4b5563;
-            transition: background-color 0.3s ease;
+        body.bg-white .album-card:hover {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+
+        body.bg-white .album-card span {
+            background-color: #e5e7eb;
+            color: #111827;
+        }
+
+        body.bg-white #album-details-modal {
+            background-color: rgba(243, 244, 246, 0.95); /* light modal */
+        }
+
+        body.bg-white #album-details-modal div {
+            background-color: #ffffff;
+            color: #111827;
+        }
+
+        body.bg-white button {
+            background-color: #e5e7eb;
+            color: #1f2937;
+        }
+
+        body.bg-white button:hover {
+            background-color: #d1d5db;
+        }
+
+        body.bg-white select {
+            background-color: #ffffff;
+            color: #111827;
+        }
+            background-color: #ffffff;
+            color: #111827;
         }
     </style>
 </head>
@@ -40,7 +67,7 @@
     </div>
 
     <!-- Dropdowns for filtering -->
-    <div class="mt-6 flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0">
+    <div class="mt-6 flex flex-col md:flex-row md:items-end md:space-x-4 space-y-2 md:space-y-0">
         <div class="flex flex-col">
             <label for="yearFilter">Meeting Year</label>
             <select id="yearFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
@@ -58,6 +85,9 @@
             <select id="hostFilter" class="p-2 text-black rounded" onchange="searchAlbums()">
                 <option value="">All Hosts</option>
             </select>
+        </div>
+        <div class="md:self-end">
+            <button onclick="clearFilters()" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded">Clear Filters</button>
         </div>
     </div>
 
@@ -79,7 +109,7 @@
 
 <script>
 const API_KEY_LASTFM = "33ba6c5c9f098d1131ad8cd253b17e26";
-const API_KEY_GOOGLE_SHEETS = "AIzaSyB3A46Jlef2icSX7TYbze7vXsDQNwjK5bU";
+// API key no longer needed with public sheet access
 const SPREADSHEET_ID = '158c3cfSIg4AX8qOARaSioQikc3CRX2psWyFRhHI9H3U';
 const RANGE = 'Sheet1';
 
@@ -87,29 +117,36 @@ let albums = [];
 const albumImageCache = new Map();
 
 async function fetchAlbumsFromSheet() {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${RANGE}?key=${API_KEY_GOOGLE_SHEETS}`;
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
     const response = await fetch(url);
-    const data = await response.json();
-    const rows = data.values;
+    const text = await response.text();
 
-    if (!rows || rows.length <= 1) return;
+    // Strip JSONP wrapper
+    const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+    const rows = json.table.rows;
 
-    albums = rows.slice(1).filter(row => row.length >= 9).map(row => ({
-        month: row[3],
-        year: row[2],
-        artist: row[5],
-        title: row[4],
-        hostedBy: row[1],
-        releaseDate: row[7],
-        genre: row[6],
-        meetingNumber: row[0],
-        spotifyURL: row[8]
-    }));
+    if (!rows || rows.length === 0) return;
+
+    albums = rows.map(row => {
+        const c = row.c || [];
+        return {
+            meetingNumber: c[0]?.v || '',
+            hostedBy: c[1]?.v || '',
+            year: c[2]?.v || '',
+            month: c[3]?.v || '',
+            title: c[4]?.v || '',
+            artist: c[5]?.v || '',
+            genre: c[6]?.v || '',
+            releaseDate: c[7]?.v || '',
+            spotifyURL: c[8]?.v || ''
+        };
+    });
 
     albums.sort((a, b) => new Date(`${b.month} 1, ${b.year}`) - new Date(`${a.month} 1, ${a.year}`));
 
     populateDropdowns();
     displayAlbums();
+
 }
 
 function populateDropdowns() {
@@ -120,7 +157,7 @@ function populateDropdowns() {
     [yearDropdown, genreDropdown, hostDropdown].forEach(dropdown => dropdown.innerHTML = '<option value="">All</option>');
 
     const years = [...new Set(albums.map(album => album.year))].sort();
-    const genres = [...new Set(albums.flatMap(album => album.genre.split(',').map(g => g.trim())))].sort();
+    const genres = [...new Set(albums.flatMap(album => album.genre.split(',').map(g => g.trim())))] .sort();
     const hosts = [...new Set(albums.map(album => album.hostedBy))].sort();
 
     years.forEach(year => yearDropdown.innerHTML += `<option value="${year}">${year}</option>`);
@@ -155,7 +192,11 @@ async function displayAlbums(filteredAlbums = albums) {
     const featuredContent = document.getElementById("featured-content");
     albumContainer.innerHTML = "";
 
-    const latest = filteredAlbums[0];
+    if (filteredAlbums.length === 0) {
+        albumContainer.innerHTML = '<p class="text-center text-gray-400">No results found.</p>';
+    }
+
+    const latest = albums[0];
 
     if (latest) {
         const { image } = await fetchAlbumDetails(latest.title, latest.artist);
@@ -175,15 +216,27 @@ async function displayAlbums(filteredAlbums = albums) {
     for (const album of filteredAlbums) {
         const { image } = await fetchAlbumDetails(album.title, album.artist);
         const div = document.createElement("div");
-        div.className = `bg-gray-800 p-3 rounded-lg flex items-center space-x-4 cursor-pointer fade-in album-card`;
-        div.onclick = () => showAlbumDetails(album);
+        div.className = `album-card p-3 rounded-lg flex items-center space-x-4 cursor-pointer fade-in`;
+        div.onclick = async () => await showAlbumDetails(album);
 
         div.innerHTML = `
             <img src="${image}" class="w-16 h-16 rounded">
-            <p>${album.month} ${album.year}: ${album.title} - ${album.artist}</p>
-        `;
+            <div>
+                <p class="font-semibold">${album.month} ${album.year}: ${album.title} - ${album.artist}</p>
+                <div class="mt-1 flex flex-wrap gap-1">
+                    ${album.genre.split(',').map(g => `<span class='bg-gray-700 text-xs px-2 py-1 rounded'>${g.trim()}</span>`).join('')}
+                </div>
+            </div>`;
         albumContainer.appendChild(div);
     }
+}
+
+function clearFilters() {
+    document.getElementById("yearFilter").value = "";
+    document.getElementById("genreFilter").value = "";
+    document.getElementById("hostFilter").value = "";
+    document.getElementById("searchBar").value = "";
+    searchAlbums();
 }
 
 function searchAlbums() {
@@ -193,7 +246,7 @@ function searchAlbums() {
     const searchText = document.getElementById("searchBar").value.toLowerCase();
 
     const filtered = albums.filter(album => {
-        const matchesYear = !year || album.year.toLowerCase() === year;
+        const matchesYear = !year || String(album.year).toLowerCase() === year;
         const matchesGenre = !genre || album.genre.toLowerCase().split(',').map(g => g.trim()).includes(genre);
         const matchesHost = !host || album.hostedBy.toLowerCase() === host;
         const matchesSearch = !searchText ||
