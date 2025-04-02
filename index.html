@@ -194,6 +194,7 @@ async function displayAlbums(filteredAlbums = albums) {
 
     if (filteredAlbums.length === 0) {
         albumContainer.innerHTML = '<p class="text-center text-gray-400">No results found.</p>';
+        return;
     }
 
     const latest = albums[0];
@@ -213,8 +214,11 @@ async function displayAlbums(filteredAlbums = albums) {
         featured.classList.add("hidden");
     }
 
-    for (const album of filteredAlbums) {
-        const { image } = await fetchAlbumDetails(album.title, album.artist);
+    const imagePromises = filteredAlbums.map(album => fetchAlbumDetails(album.title, album.artist));
+    const albumDetails = await Promise.all(imagePromises);
+
+    filteredAlbums.forEach((album, index) => {
+        const { image } = albumDetails[index];
         const div = document.createElement("div");
         div.className = `album-card p-3 rounded-lg flex items-center space-x-4 cursor-pointer fade-in`;
         div.onclick = async () => await showAlbumDetails(album);
@@ -228,7 +232,7 @@ async function displayAlbums(filteredAlbums = albums) {
                 </div>
             </div>`;
         albumContainer.appendChild(div);
-    }
+    });
 }
 
 function clearFilters() {
